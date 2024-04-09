@@ -223,5 +223,5 @@ if train_model:
         f.write(b'Diagnosis\n')
         np.savetxt(f, y_pred.astype(int), fmt='%i', delimiter=",")
 
-    plt.hist(y_pred, bins=4)
+    plt.hist(y_pred, bins=3)
     plt.show()
