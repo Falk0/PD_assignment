@@ -1,3 +1,11 @@
+/data/Diagnoses of training data.docx
+/data/test_images_rcbf.nii
+/data/test_images_sbr.nii
+/data/training_images_rcbf.nii
+/data/training_images_sbr.nii
+/data/voi_template.nii
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
