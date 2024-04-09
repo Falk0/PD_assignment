@@ -12,18 +12,24 @@ from sklearn.preprocessing import StandardScaler
 
 # Paths to the NIfTI files
 voi_template_path = 'data/voi_template.nii'
-measurement_nii_path = 'data/training_images_rcbf.nii'  # Placeholder path
+measurement_nii_path = 'data/training_images_rcbf.nii'  
 measurement_nii_path_sbr = 'data/training_images_sbr.nii' 
 
+test_measurement_nii_path = 'data/test_images_rcbf.nii'  
+test_measurement_nii_path_sbr = 'data/test_images_sbr.nii' 
 
 # Load the VOI template and the measurement data
 voi_img = nib.load(voi_template_path)
 measurement_img = nib.load(measurement_nii_path)
 measurement_img_sbr = nib.load(measurement_nii_path_sbr)
+test_measurement_img = nib.load(test_measurement_nii_path)
+test_measurement_img_sbr = nib.load(test_measurement_nii_path_sbr)
 
 voi_data = voi_img.get_fdata()
 measurement_data = measurement_img.get_fdata()
 measurement_data_sbr = measurement_img_sbr.get_fdata()
+test_measurement_data =test_measurement_img.get_fdata()
+test_measurement_data_sbr = test_measurement_img_sbr.get_fdata()
 
 labels = pd.read_csv('data/labels.csv')
 
@@ -82,16 +88,21 @@ labels_structures_sbr = {
 
 results = [] 
 results_sbr = [] 
+
+test_results = [] 
+test_results_sbr = [] 
+
 for i in range(0,40,1):
     measurement_data_index = measurement_data[:,:,:,i]
     measurement_data_index_sbr = measurement_data_sbr[:,:,:,i]    
+
     # Calculate and print mean measurements for each structure
     diagnosis = get_patient_diagnosis(labels, i+1)
     mean_measurements = {'Diagnosis': diagnosis}
     mean_measurements_sbr = {'Diagnosis': diagnosis}
     for label, structure in labels_structures.items():
         mean_value = calculate_mean_measurement_for_label(measurement_data_index, voi_data, label)
-        mean_measurements[structure] = mean_value     
+        mean_measurements[structure] = mean_value
     for label, structure in labels_structures_sbr.items():
         mean_value_sbr = calculate_mean_measurement_for_label(measurement_data_index_sbr, voi_data, label)  
         mean_measurements_sbr[structure] = mean_value_sbr
@@ -100,9 +111,30 @@ for i in range(0,40,1):
     results.append(mean_measurements)
     results_sbr.append(mean_measurements_sbr)
 
+for i in range(0,41,1):
+    test_measurement_data_index = test_measurement_data[:,:,:,i]
+    test_measurement_data_index_sbr = test_measurement_data_sbr[:,:,:,i]    
+    
+    # Calculate and print mean measurements for each structure
+    test_mean_measurements = {'Patient': i}
+    test_mean_measurements_sbr = {'Patient': i}
+    for label, structure in labels_structures.items():
+        mean_value = calculate_mean_measurement_for_label(test_measurement_data_index, voi_data, label)
+        test_mean_measurements[structure] = mean_value      
+    for label, structure in labels_structures_sbr.items():
+        mean_value_sbr = calculate_mean_measurement_for_label(measurement_data_index_sbr, voi_data, label)  
+        test_mean_measurements_sbr[structure] = mean_value_sbr
+
+    # Add the completed dictionary for the current patient to our results list
+    test_results.append(test_mean_measurements)
+    test_results_sbr.append(test_mean_measurements_sbr)
+
 
 patients_stats_df = pd.DataFrame(results)
 patients_stats_df_sbr = pd.DataFrame(results_sbr)
+
+test_patients_stats_df = pd.DataFrame(test_results)
+test_patients_stats_df_sbr = pd.DataFrame(test_results_sbr)
 
 
 Y = patients_stats_df['Diagnosis']
@@ -110,14 +142,16 @@ Y = patients_stats_df['Diagnosis']
 X1 = patients_stats_df.drop(columns=['Diagnosis'])
 X2 = patients_stats_df_sbr.drop(columns=['Diagnosis'])
 
+print(X1.head())
+print(X2.head())
 
 X = pd.concat([X1, X2], axis=1)
 
-
-print(X.head())
-
 # Standardizing the features
-X = StandardScaler().fit_transform(X)
+scaler = StandardScaler()
+
+# Fit on training data
+X = scaler.fit_transform(X)
 
 
 train_model = True
@@ -170,3 +204,24 @@ if train_model:
     print(model.coef_) # returns a matrix of weights (coefficients)
 
 
+    # Train model on all training data and predict test data
+    X1_test = test_patients_stats_df.drop(columns=['Patient'])
+    X2_test = test_patients_stats_df_sbr.drop(columns=['Patient'])
+    
+    X_test = pd.concat([X1_test, X2_test], axis=1)
+    # Transform test data
+    
+    X_test = scaler.transform(X_test)
+
+    model = LogisticRegression(solver='liblinear')
+    model.fit(X, Y)
+    y_pred = model.predict(X_test)
+
+    print(y_pred)
+    
+    with open("data/test_predictions.csv", "wb") as f:
+        f.write(b'Diagnosis\n')
+        np.savetxt(f, y_pred.astype(int), fmt='%i', delimiter=",")
+
+    plt.hist(y_pred, bins=4)
+    plt.show()
