@@ -122,7 +122,7 @@ for i in range(0,41,1):
         mean_value = calculate_mean_measurement_for_label(test_measurement_data_index, voi_data, label)
         test_mean_measurements[structure] = mean_value      
     for label, structure in labels_structures_sbr.items():
-        mean_value_sbr = calculate_mean_measurement_for_label(measurement_data_index_sbr, voi_data, label)  
+        mean_value_sbr = calculate_mean_measurement_for_label(test_measurement_data_index_sbr, voi_data, label)  
         test_mean_measurements_sbr[structure] = mean_value_sbr
 
     # Add the completed dictionary for the current patient to our results list
@@ -223,5 +223,5 @@ if train_model:
         f.write(b'Diagnosis\n')
         np.savetxt(f, y_pred.astype(int), fmt='%i', delimiter=",")
 
-    plt.hist(y_pred, bins=3)
+    plt.hist(y_pred, bins=4)
     plt.show()
